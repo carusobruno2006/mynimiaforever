@@ -1,0 +1,229 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>MYNI MIA</title>
+  <style>
+    body { margin: 0; overflow: hidden; background: black; }
+    canvas { display: block; }
+
+    #overlay, #loadingScreen {
+      position: absolute;
+      width: 100%;
+      height: 100%;
+      background: url('https://upload.wikimedia.org/wikipedia/commons/6/66/Star-forming_region_in_NGC_3324_%28captured_by_the_James_Webb_Space_Telescope%29.png') no-repeat center center;
+      background-size: cover;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      z-index: 10;
+    }
+
+    #loadingScreen {
+      background: black;
+      color: white;
+      font-size: 24px;
+      display: none;
+    }
+
+    #overlay h1 {
+      font-size: 48px;
+      color: #ffffff;
+      text-shadow: 2px 2px 4px #000;
+    }
+
+    #overlay button {
+      font-size: 24px;
+      padding: 12px 24px;
+      cursor: pointer;
+    }
+
+    #sky-message {
+      position: absolute;
+      top: 20px;
+      left: 50%;
+      transform: translateX(-50%);
+      font-size: 24px;
+      color: #ff69b4;
+      text-shadow: 2px 2px 4px #000;
+      z-index: 5;
+    }
+
+    @keyframes floatHeart {
+      0% { transform: translateY(0); }
+      50% { transform: translateY(-20px); }
+      100% { transform: translateY(0); }
+    }
+
+    .heart {
+      position: absolute;
+      font-size: 24px;
+      animation: floatHeart 5s infinite ease-in-out;
+    }
+
+    #phone {
+      display: none;
+      position: absolute;
+      bottom: 20px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: white;
+      padding: 20px;
+      border-radius: 10px;
+      color: black;
+      z-index: 11;
+    }
+  </style>
+</head>
+<body>
+  <div id="overlay">
+    <h1>MYNI MIA</h1>
+    <button id="startButton">START</button>
+  </div>
+  <div id="loadingScreen">Caricamento in corso... 🌲</div>
+  <div id="sky-message">Controlla la mail, ti amo 💌</div>
+  <div id="phone">Sei il mio porto sicuro.</div>
+
+  <script src="https://cdn.jsdelivr.net/npm/three@0.152.2/build/three.min.js"></script>
+  <script>
+    let scene, camera, renderer;
+    let velocity = 0;
+    let isJumping = false;
+    let ySpeed = 0;
+    let listener, jumpSound;
+    let phoneVisible = false;
+
+    function createHeart() {
+      const heart = document.createElement('div');
+      heart.className = 'heart';
+      heart.innerText = '❤️';
+      heart.style.left = Math.random() * 100 + '%';
+      heart.style.top = Math.random() * 100 + '%';
+      heart.style.fontSize = (Math.random() * 20 + 16) + 'px';
+      heart.style.opacity = 0.7;
+      document.body.appendChild(heart);
+    }
+
+    function init() {
+      document.getElementById("overlay").style.display = "none";
+      document.getElementById("loadingScreen").style.display = "flex";
+
+      setTimeout(() => {
+        startScene();
+        document.getElementById("loadingScreen").style.display = "none";
+      }, 2000);
+    }
+
+    function startScene() {
+      scene = new THREE.Scene();
+      camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+      renderer = new THREE.WebGLRenderer();
+      renderer.setSize(window.innerWidth, window.innerHeight);
+      document.body.appendChild(renderer.domElement);
+
+      const light = new THREE.AmbientLight(0xffffff, 0.8);
+      scene.add(light);
+      const dirLight = new THREE.DirectionalLight(0xffffff, 1);
+      dirLight.position.set(5, 10, 7.5);
+      scene.add(dirLight);
+
+      const ground = new THREE.Mesh(
+        new THREE.BoxGeometry(100, 1, 100),
+        new THREE.MeshStandardMaterial({ color: 0x228B22 })
+      );
+      ground.position.y = -0.5;
+      scene.add(ground);
+
+      for (let i = 0; i < 15; i++) {
+        const trunk = new THREE.Mesh(
+          new THREE.CylinderGeometry(0.2, 0.3, 2, 8),
+          new THREE.MeshStandardMaterial({ color: 0x8B4513 })
+        );
+        trunk.position.set(Math.random() * 50 - 25, 1, Math.random() * 50 - 25);
+        scene.add(trunk);
+
+        const leaves = new THREE.Mesh(
+          new THREE.SphereGeometry(1.5, 8, 8),
+          new THREE.MeshStandardMaterial({ color: 0x00FF00 })
+        );
+        leaves.position.set(trunk.position.x, trunk.position.y + 1.5, trunk.position.z);
+        scene.add(leaves);
+      }
+
+      for (let i = 0; i < 10; i++) {
+        const animal = new THREE.Mesh(
+          new THREE.BoxGeometry(0.5, 0.5, 0.5),
+          new THREE.MeshStandardMaterial({ color: 0xff69b4 })
+        );
+        animal.position.set(Math.random() * 40 - 20, 0.25, Math.random() * 40 - 20);
+        scene.add(animal);
+      }
+
+      for (let i = 0; i < 20; i++) createHeart();
+
+      camera.position.set(0, 2, 5);
+      addAudio();
+      animate();
+    }
+
+    function animate() {
+      requestAnimationFrame(animate);
+      updateJump();
+      renderer.render(scene, camera);
+    }
+
+    function handleKeys(e) {
+      const speed = 0.5;
+      switch (e.key.toLowerCase()) {
+        case 'w': camera.position.z -= speed; break;
+        case 's': camera.position.z += speed; break;
+        case 'a': camera.position.x -= speed; break;
+        case 'd': camera.position.x += speed; break;
+        case ' ': 
+          if (!isJumping) {
+            isJumping = true;
+            ySpeed = 0.2;
+            if (jumpSound && jumpSound.isPlaying) jumpSound.stop();
+            if (jumpSound) jumpSound.play();
+          }
+          break;
+        case 'p':
+          phoneVisible = !phoneVisible;
+          document.getElementById("phone").style.display = phoneVisible ? "block" : "none";
+          break;
+      }
+    }
+
+    function updateJump() {
+      if (isJumping) {
+        camera.position.y += ySpeed;
+        ySpeed -= 0.01;
+        if (camera.position.y <= 2) {
+          camera.position.y = 2;
+          isJumping = false;
+          ySpeed = 0;
+        }
+      }
+    }
+
+    function addAudio() {
+      listener = new THREE.AudioListener();
+      camera.add(listener);
+      jumpSound = new THREE.Audio(listener);
+      const audioLoader = new THREE.AudioLoader();
+      audioLoader.load('https://upload.wikimedia.org/wikipedia/commons/4/4e/Il_giorno_di_my.mp3', function(buffer) {
+        jumpSound.setBuffer(buffer);
+        jumpSound.setVolume(0.5);
+      });
+    }
+
+    document.getElementById("startButton").addEventListener("click", init);
+    window.addEventListener("keydown", (e) => {
+      if (e.key === "Enter") init();
+      else handleKeys(e);
+    });
+  </script>
+</body>
+</html>
